@@ -1,0 +1,63 @@
+{
+  "features": [
+    {
+      "attributes": {
+        "PermitNo": "BD250476",
+        "ParcelNo": "09 06 23 2 000 003.001",
+        "IssuedDate": "2025-03-10",
+        "ExpiredDate": "2024-07-13",
+        "PermitStatus": "ISSUED",
+        "PermitCode": "B105",
+        "Zoning": "R-65-M",
+        "FloodZone": "AE / 0232 - H",
+        "PermitDescription": "Five or More Family Apartments - Master Permit",
+        "ProjectType": "New",
+        "EstimatedCost": 17625000.0,
+        "Total_Fee": 106325.0,
+        "OwnerName": "OREI MONTGOMERY 28.32 ACRES PROPERTY OWNER, LLC",
+        "UseType": "Commercial",
+        "FinalValue": 1309600.0,
+        "JobDescription": "ERECT A NEW MULTI-FAMILY COMPLEX FOR APARTMENTS.",
+        "ContractorName": "COURTNEY BURROWS",
+        "PhysicalAddress": "10510 CHANTILLY PKWY MONTGOMERY AL 36117",
+        "Year": "2025",
+        "Month": "3",
+        "OBJECTID": 58957
+      },
+      "geometry": {
+        "x": -86.1134,
+        "y": 32.3841
+      }
+    },
+    {
+      "attributes": {
+        "PermitNo": "BDG240376",
+        "ParcelNo": "10 01 11 2 009 023.002",
+        "IssuedDate": "2025-05-22",
+        "ExpiredDate": null,
+        "PermitStatus": "VOID",
+        "PermitCode": "BGC",
+        "Zoning": "B-2",
+        "FloodZone": "X / 0113 - H",
+        "PermitDescription": "GRADING PERMIT COMMERCIAL",
+        "ProjectType": "New",
+        "EstimatedCost": null,
+        "Total_Fee": 800.0,
+        "OwnerName": "OLP RW PROPERTIES LLC",
+        "UseType": "Commercial",
+        "FinalValue": 777100.0,
+        "JobDescription": "GRADING PERMIT TO ERECT A 19.4'X134' BUILDING FOR A CARWASH.",
+        "ContractorName": "JAKE STEWART",
+        "PhysicalAddress": "4135 ATLANTA HWY MONTGOMERY AL 36109",
+        "Year": "2025",
+        "Month": "5",
+        "OBJECTID": 58958
+      },
+      "geometry": {
+        "x": -86.2329,
+        "y": 32.3961
+      }
+    }
+  ],
+  "count": 2
+}

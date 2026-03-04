@@ -1,0 +1,65 @@
+{
+  "features": [
+    {
+      "attributes": {
+        "Parcel_ID": "1107261002002000",
+        "Address": "2528 WESTWOOD DR - 6418 CHAPPELLE LN",
+        "Current_U": "Single Family Detached",
+        "NEW__Sus": "Is Residential and Not Owner Occupied",
+        "Is_Multifamily_Property": "No",
+        "Has_Active_Rental_Registration_": "No",
+        "Is_Residential_and_Unknown_Owne": "No",
+        "Is_Residential_and_Not_Owner_Oc": "Yes",
+        "District": "District 4",
+        "OBJECTID": 1
+      },
+      "centroid": {
+        "x": -86.3295,
+        "y": 32.3439
+      },
+      "geometry": {
+        "rings": [
+          [
+            [-86.3294534563119, 32.3437313766018],
+            [-86.3296476163444, 32.3437253682312],
+            [-86.3296676694274, 32.3440777082197],
+            [-86.3295058517136, 32.3440820582405],
+            [-86.3294728537891, 32.3440606408859],
+            [-86.3294534563119, 32.3437313766018]
+          ]
+        ]
+      }
+    },
+    {
+      "attributes": {
+        "Parcel_ID": "1107261002001000",
+        "Address": "2524 WESTWOOD DR - 400 W FLEMING RD",
+        "Current_U": "Single Family Detached",
+        "NEW__Sus": "Is Residential and Not Owner Occupied",
+        "Is_Multifamily_Property": "No",
+        "Has_Active_Rental_Registration_": "No",
+        "Is_Residential_and_Unknown_Owne": "No",
+        "Is_Residential_and_Not_Owner_Oc": "Yes",
+        "District": "District 4",
+        "OBJECTID": 2
+      },
+      "centroid": {
+        "x": -86.3293,
+        "y": 32.3439
+      },
+      "geometry": {
+        "rings": [
+          [
+            [-86.3292592773937, 32.3437369946666],
+            [-86.3294534563119, 32.3437313766018],
+            [-86.3294728537891, 32.3440606408859],
+            [-86.3293440357986, 32.3440864091605],
+            [-86.3292799609014, 32.3440881313622],
+            [-86.3292592773937, 32.3437369946666]
+          ]
+        ]
+      }
+    }
+  ],
+  "count": 2
+}

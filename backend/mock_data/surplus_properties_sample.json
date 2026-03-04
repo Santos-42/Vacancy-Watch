@@ -1,0 +1,67 @@
+{
+  "features": [
+    {
+      "attributes": {
+        "FID": 1,
+        "CALC_ACRE": 0.20755209,
+        "TAX_MAP": "04 09 32 1 019 008.000",
+        "PARCEL_NUM": "0409321019008000",
+        "STREET_NUM": " ",
+        "STREET_NAM": "HOUSER ST",
+        "NOTES": " ",
+        "LOCATION": "S side, across from Pickens St",
+        "STRATEGY": "GENERAL SURPLUS",
+        "DISPLAY": "YES",
+        "District": 3,
+        "SQ_FT": 9040.93775321
+      },
+      "centroid": {
+        "x": -86.3086,
+        "y": 32.3745
+      },
+      "geometry": {
+        "rings": [
+          [
+            [-86.3085, 32.3744],
+            [-86.3087, 32.3744],
+            [-86.3087, 32.3746],
+            [-86.3085, 32.3746],
+            [-86.3085, 32.3744]
+          ]
+        ]
+      }
+    },
+    {
+      "attributes": {
+        "FID": 2,
+        "CALC_ACRE": 0.22038732,
+        "TAX_MAP": "10 02 09 2 020 015.000",
+        "PARCEL_NUM": "1002092020015000",
+        "STREET_NUM": "19",
+        "STREET_NAM": "ARDEN RD",
+        "NOTES": " ",
+        "LOCATION": " ",
+        "STRATEGY": "GENERAL SURPLUS",
+        "DISPLAY": "YES",
+        "District": 2,
+        "SQ_FT": 9600.09594557
+      },
+      "centroid": {
+        "x": -86.3120,
+        "y": 32.3705
+      },
+      "geometry": {
+        "rings": [
+          [
+            [-86.3119, 32.3704],
+            [-86.3121, 32.3704],
+            [-86.3121, 32.3706],
+            [-86.3119, 32.3706],
+            [-86.3119, 32.3704]
+          ]
+        ]
+      }
+    }
+  ],
+  "count": 2
+}

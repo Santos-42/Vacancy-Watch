@@ -109,6 +109,20 @@ async function getFullAnomalyData() {
 // Map: Build pin graphics (lightweight — for fast initial render)
 // ---------------------------------------------------------------------------
 
+function getPinSvg(color, isCritical) {
+  const [r, g, b] = color;
+  const fill = `rgb(${r},${g},${b})`;
+  return `data:image/svg+xml,${encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="30" viewBox="0 0 22 30">
+      <filter id="shadow"><feDropShadow dx="0" dy="2" stdDeviation="2" flood-opacity="0.5"/></filter>
+      <ellipse cx="11" cy="28" rx="4" ry="2" fill="rgba(0,0,0,0.3)"/>
+      <path d="M11 0 C5 0 0 5 0 11 C0 19 11 30 11 30 C11 30 22 19 22 11 C22 5 17 0 11 0Z"
+            fill="${fill}" filter="url(#shadow)"/>
+      <circle cx="11" cy="11" r="4" fill="rgba(255,255,255,0.35)"/>
+    </svg>
+  `)}`;
+}
+
 function buildGraphics(GraphicClass, anomalies) {
   return anomalies
     .filter((a) => a.latitude != null && a.longitude != null)
@@ -122,10 +136,10 @@ function buildGraphics(GraphicClass, anomalies) {
           latitude: a.latitude,
         },
         symbol: {
-          type: "simple-marker",
-          color,
-          size: "12px",
-          outline: { color: [255, 255, 255], width: 1.5 },
+          type: "picture-marker",
+          url: getPinSvg(color, a.priority_score >= 7),
+          width: "22px",
+          height: "30px",
         },
         attributes: {
           parcel_id: a.parcel_id,
@@ -502,8 +516,23 @@ async function loadMapData(typeFilter = "", minScoreFilter = "") {
     lightAnomalies = lightData.anomalies || [];
 
     if (lightAnomalies.length === 0) {
-      showOverlay("loading", "No anomalies match the current filters.");
-      document.getElementById("exec-count").textContent = "(0)";
+      document.getElementById("exec-count").textContent = "0 anomalies";
+      const tbody = document.getElementById("anomaly-tbody");
+      if (tbody) {
+        tbody.innerHTML = `
+          <tr class="empty-state-row">
+            <td colspan="4">
+              <div class="empty-state">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                  <line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/>
+                </svg>
+                <p>0 Anomalies detected for this criteria.</p>
+              </div>
+            </td>
+          </tr>`;
+      }
+      showOverlay("hide");
       return;
     }
 
@@ -560,7 +589,7 @@ async function main() {
   await loadMapData();
 
   // 6. Wire up Filter Listeners
-  const typeSelect = document.getElementById("filter-type");
+  const typeSelect = document.getElementById("type-filter");
   const scoreSelect = document.getElementById("filter-score");
   
   const handleFilterChange = () => {
@@ -577,7 +606,7 @@ async function main() {
 
     const hitResult = await view.hitTest(event.detail.screenPoint);
     const graphicHit = hitResult.results.find(
-      (r) => r.graphic && r.graphic.layer === graphicsLayer
+      (r) => r.graphic && r.graphic.layer === mainGraphicsLayer
     );
 
     if (graphicHit) {

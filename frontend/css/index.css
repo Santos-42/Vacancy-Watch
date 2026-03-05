@@ -26,7 +26,9 @@ body {
 /* ── App Layout (Map + Panel side by side) ─────────────────────────────────── */
 
 #app-layout {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  grid-template-rows: 1fr auto;
   height: 100%;
   width: 100%;
 }
@@ -91,7 +93,7 @@ body {
 }
 
 .panel-spinner::before {
-  content: '';
+  content: "";
   width: 32px;
   height: 32px;
   border: 3px solid rgba(255, 255, 255, 0.1);
@@ -101,7 +103,9 @@ body {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* ── Detail Card (Module 3.2 — rendered by app.js on pin click) ────────────── */
@@ -128,9 +132,16 @@ body {
   color: #fff;
 }
 
-.badge-zombie_property       { background: rgba(220, 53, 69, 0.85); }
-.badge-ghost_permit          { background: rgba(255, 193, 7, 0.85); color: #1a1a2e; }
-.badge-government_blind_spot { background: rgba(13, 110, 253, 0.85); }
+.badge-zombie_property {
+  background: rgba(220, 53, 69, 0.85);
+}
+.badge-ghost_permit {
+  background: rgba(255, 193, 7, 0.85);
+  color: #1a1a2e;
+}
+.badge-government_blind_spot {
+  background: rgba(13, 110, 253, 0.85);
+}
 
 .detail-address {
   font-size: 15px;
@@ -255,13 +266,25 @@ body {
   font-weight: 700;
 }
 
-.level-low    { color: #2ecc71; }
-.level-medium { color: #f39c12; }
-.level-high   { color: #e74c3c; }
+.level-low {
+  color: #2ecc71;
+}
+.level-medium {
+  color: #f39c12;
+}
+.level-high {
+  color: #e74c3c;
+}
 
-.ring-low    { stroke: #2ecc71; }
-.ring-medium { stroke: #f39c12; }
-.ring-high   { stroke: #e74c3c; }
+.ring-low {
+  stroke: #2ecc71;
+}
+.ring-medium {
+  stroke: #f39c12;
+}
+.ring-high {
+  stroke: #e74c3c;
+}
 
 /* Pulsing glow for high-priority anomalies */
 .priority-wrapper.priority-pulse {
@@ -269,8 +292,13 @@ body {
 }
 
 @keyframes urgencyPulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); }
-  50%      { box-shadow: 0 0 16px 2px rgba(231, 76, 60, 0.3); }
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(231, 76, 60, 0);
+  }
+  50% {
+    box-shadow: 0 0 16px 2px rgba(231, 76, 60, 0.3);
+  }
 }
 
 /* ── Screen-reader only (SEO: h1 present but hidden) ───────────────────────── */
@@ -318,22 +346,226 @@ body {
 
 /* ── Responsive: Panel → Bottom Sheet on small screens ─────────────────────── */
 
+/* ── Executive Table Panel (Module 3.4) ────────────────────────────────────── */
+
+#exec-panel {
+  grid-column: 1 / -1;
+  background: #16213e;
+  color: #e0e0e0;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  flex-direction: column;
+  max-height: 30vh;
+  overflow: hidden;
+}
+
+.exec-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  background: linear-gradient(135deg, #0f3460, #16213e);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+.exec-header h2 {
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: 0.3px;
+}
+
+.exec-count {
+  font-size: 12px;
+  color: #8892a4;
+}
+
+.exec-table-wrap {
+  overflow-y: auto;
+  flex: 1;
+}
+
+#anomaly-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+#anomaly-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+#anomaly-table th {
+  background: #0f3460;
+  color: #8892a4;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+#anomaly-table th:last-child {
+  text-align: center;
+  width: 70px;
+}
+
+#anomaly-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  color: #c8c8c8;
+}
+
+#anomaly-table td:first-child {
+  color: #8892a4;
+  width: 40px;
+}
+
+#anomaly-table td:last-child {
+  text-align: center;
+  font-weight: 700;
+}
+
+/* ── Filter Controls ───────────────────────────────────────────────────────── */
+
+.exec-filters {
+  display: flex;
+  gap: 12px;
+  padding: 0 16px 12px 16px;
+  background: #1a1a2e; /* match panel background */
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.filter-select {
+  flex: 1;
+  background: #0f3460;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 13px;
+  outline: none;
+  cursor: pointer;
+}
+
+.filter-select:focus {
+  border-color: #53a8b6;
+}
+
+/* ── Table Rows ────────────────────────────────────────────────────────────── */
+
+#anomaly-table tbody tr {
+  cursor: pointer;
+}
+
+#anomaly-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+#anomaly-table tbody tr.row-active {
+  background: rgba(83, 168, 182, 0.12);
+  border-left: 3px solid #53a8b6;
+}
+
+#anomaly-table tbody tr.row-active td:first-child {
+  padding-left: 9px; /* compensate 3px border */
+}
+
+/* Score cell color coding */
+.score-high {
+  color: #e74c3c;
+}
+.score-medium {
+  color: #f39c12;
+}
+.score-low {
+  color: #2ecc71;
+}
+
+/* Type badge inside table cell */
+.table-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #fff;
+}
+
+.table-badge-zombie_property {
+  background: rgba(220, 53, 69, 0.7);
+}
+.table-badge-ghost_permit {
+  background: rgba(255, 193, 7, 0.7);
+  color: #1a1a2e;
+}
+.table-badge-government_blind_spot {
+  background: rgba(13, 110, 253, 0.7);
+}
+
+/* ── Responsive: stack vertically on small screens ─────────────────────────── */
+
+.mobile-tabs {
+  display: none;
+}
+
 @media (max-width: 768px) {
   #app-layout {
-    flex-direction: column;
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr auto auto; /* Map, Tabs, Active Panel */
   }
 
+  /* Map takes remaining height */
   #map-view {
-    flex: 1;
-    height: auto;
-    min-height: 55vh;
+    min-height: 0;
   }
 
-  #detail-panel {
-    width: 100%;
-    height: 45vh;
-    max-height: 45vh;
-    border-left: none;
+  /* Tab Bar */
+  .mobile-tabs {
+    display: flex;
+    grid-column: 1 / -1;
+    background: #0f3460;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .tab-btn {
+    flex: 1;
+    background: none;
+    border: none;
+    color: #8892a4;
+    padding: 12px 0;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+  }
+
+  .tab-btn.tab-active {
+    color: #fff;
+    border-bottom-color: #53a8b6;
+    background: rgba(255, 255, 255, 0.04);
+  }
+
+  /* Panel hiding logic */
+  #detail-panel,
+  #exec-panel {
+    grid-column: 1 / -1;
+    border-left: none;
+    max-height: 40vh; /* Both panels use same max height on mobile */
+  }
+
+  /* We use classes toggled by JS to show/hide the active panel on mobile */
+  .panel-hidden {
+    display: none !important;
   }
 }

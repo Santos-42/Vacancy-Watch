@@ -21,33 +21,30 @@
 declare(strict_types=1);
 
 // ---------------------------------------------------------------------------
-// Environment loader (lightweight — only for CORS_ORIGIN, no DB creds)
+// Environment: CORS origin
+// ---------------------------------------------------------------------------
+// Production: read from server config (Apache SetEnv, Nginx fastcgi_param, Docker ENV).
+//   Zero disk I/O per request.
+// Development fallback: parse .env file only if getenv() returns nothing.
 // ---------------------------------------------------------------------------
 
-function loadApiEnv(string $path): array
-{
-    if (!file_exists($path)) {
-        return [];
-    }
+$allowedOrigin = getenv('CORS_ORIGIN') ?: null;
+
+if (!$allowedOrigin) {
+    // Dev fallback: parse .env (acceptable for single-user local dev)
+    $envPath = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . '.env';
     $env = [];
-    foreach (file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
-        $line = trim($line);
-        if ($line === '' || $line[0] === '#') continue;
-        if (strpos($line, '=') === false) continue;
-        [$key, $value] = explode('=', $line, 2);
-        $env[trim($key)] = trim($value);
+    if (file_exists($envPath)) {
+        foreach (file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+            $line = trim($line);
+            if ($line === '' || $line[0] === '#') continue;
+            if (strpos($line, '=') === false) continue;
+            [$key, $value] = explode('=', $line, 2);
+            $env[trim($key)] = trim($value);
+        }
     }
-    return $env;
+    $allowedOrigin = $env['CORS_ORIGIN'] ?? 'http://localhost:5500';
 }
-
-$envPath = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . '.env';
-$env     = loadApiEnv($envPath);
-
-// ---------------------------------------------------------------------------
-// CORS Headers — specific origin from .env, never wildcard
-// ---------------------------------------------------------------------------
-
-$allowedOrigin = $env['CORS_ORIGIN'] ?? 'http://localhost:5500';
 
 header('Access-Control-Allow-Origin: ' . $allowedOrigin);
 header('Access-Control-Allow-Methods: GET, OPTIONS');
@@ -154,6 +151,7 @@ if ($mode === 'light') {
         'longitude'      => $a['longitude']       ?? null,
         'street_address' => $a['street_address']  ?? null,
         'anomaly_type'   => $a['anomaly_type']    ?? null,
+        'priority_score' => $a['priority_score']  ?? 0,
     ], $anomalies);
 }
 

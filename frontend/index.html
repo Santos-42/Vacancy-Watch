@@ -53,6 +53,12 @@
         <arcgis-zoom position="top-left"></arcgis-zoom>
       </arcgis-map>
 
+      <!-- Mobile Tab Bar (Module 3.4 / Fix 5) -->
+      <nav id="mobile-tabs" class="mobile-tabs">
+        <button class="tab-btn tab-active" data-panel="exec-panel">Table</button>
+        <button class="tab-btn" data-panel="detail-panel">Detail</button>
+      </nav>
+
       <!-- Executive Detail Panel (Module 3.2) -->
       <aside id="detail-panel">
         <header class="panel-header">
@@ -63,6 +69,45 @@
           <p class="panel-placeholder">Click a pin on the map to inspect anomaly details.</p>
         </div>
       </aside>
+
+      <!-- Executive Table Panel (Module 3.4) -->
+      <section id="exec-panel">
+        <header class="exec-header">
+          <h2>Top Anomalies</h2>
+          <span id="exec-count" class="exec-count"></span>
+        </header>
+        
+        <!-- Filter Controls (Fix Request) -->
+        <div class="exec-filters">
+          <select id="filter-type" class="filter-select">
+            <option value="">All Types</option>
+            <option value="zombie_property">Zombie Property</option>
+            <option value="ghost_permit">Ghost Permit</option>
+            <option value="government_blind_spot">Government Blind Spot</option>
+          </select>
+          <select id="filter-score" class="filter-select">
+            <option value="">All Scores</option>
+            <option value="4">Medium+ (Score 4+)</option>
+            <option value="7">Critical (Score 7+)</option>
+          </select>
+        </div>
+
+        <div class="exec-table-wrap">
+          <table id="anomaly-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Address</th>
+                <th>Type</th>
+                <th>Score</th>
+              </tr>
+            </thead>
+            <tbody id="anomaly-tbody">
+              <!-- Populated by app.js -->
+            </tbody>
+          </table>
+        </div>
+      </section>
 
     </div>
 

@@ -1,14 +1,17 @@
 /**
  * =============================================================================
- * Vacancy Watch — Frontend Application Logic (Module 3.2)
+ * Vacancy Watch — Frontend Application Logic (Module 3.2 + 3.4)
  * =============================================================================
  * 1. Fetches lightweight anomaly data (?mode=light) to render map pins
  * 2. On pin click: lazily fetches FULL anomaly data (with details), caches it,
  *    then populates the Executive Detail Panel with investigative context
+ * 3. Renders an executive anomaly table (Module 3.4) from the same light data,
+ *    sorted by priority_score descending. Row click → map goTo + detail panel.
+ *    Pin click → table row highlight (bidirectional sync).
  *
  * Data flow:
- *   Pin load  → GET ?mode=light  → coordinates only → fast map render
- *   Pin click → GET (full)       → details object   → sidebar panel
+ *   Pin load  → GET ?mode=light  → coordinates + score → fast map render + table
+ *   Pin click → GET (full)       → details object      → sidebar panel
  *
  * NEVER calls Montgomery Open Data directly — agent.md 3-tier rule.
  * =============================================================================
@@ -276,11 +279,161 @@ function resetPanel() {
 }
 
 // ---------------------------------------------------------------------------
+// Mobile Tabbed UI (Fix 5)
+// ---------------------------------------------------------------------------
+
+function initMobileTabs() {
+  const tabs = document.querySelectorAll(".tab-btn");
+  if (!tabs.length) return;
+
+  // Initial state for mobile
+  if (window.innerWidth <= 768) {
+    document.getElementById("detail-panel").classList.add("panel-hidden");
+  }
+
+  // Window resize handler to clean up classes if returning to desktop
+  window.addEventListener("resize", () => {
+    if (window.innerWidth > 768) {
+      document.getElementById("detail-panel").classList.remove("panel-hidden");
+      document.getElementById("exec-panel").classList.remove("panel-hidden");
+    } else {
+      // Re-apply mobile state based on active tab
+      const activeTab = document.querySelector(".tab-active");
+      if (activeTab) {
+        switchMobileTab(activeTab.dataset.panel);
+      }
+    }
+  });
+
+  tabs.forEach(btn => {
+    btn.addEventListener("click", () => switchMobileTab(btn.dataset.panel));
+  });
+}
+
+function switchMobileTab(targetPanelId) {
+  if (window.innerWidth > 768) return;
+
+  // Update buttons
+  document.querySelectorAll(".tab-btn").forEach(btn => {
+    btn.classList.toggle("tab-active", btn.dataset.panel === targetPanelId);
+  });
+
+  // Update panels
+  document.getElementById("exec-panel").classList.toggle("panel-hidden", targetPanelId !== "exec-panel");
+  document.getElementById("detail-panel").classList.toggle("panel-hidden", targetPanelId !== "detail-panel");
+}
+
+// ---------------------------------------------------------------------------
+// Executive Table (Module 3.4): Render + Bidirectional Sync
+// ---------------------------------------------------------------------------
+
+/** Reference to the ArcGIS MapView — set once in main() for goTo calls */
+let mapViewRef = null;
+
+/**
+ * Render the executive anomaly table from lightweight data.
+ * Sorts by priority_score descending so highest-risk items are at top.
+ * @param {Array} anomalies — light-mode anomaly array (has priority_score)
+ */
+function renderExecTable(anomalies) {
+  const tbody = document.getElementById("anomaly-tbody");
+  const countEl = document.getElementById("exec-count");
+  if (!tbody) return;
+
+  // Sort descending by priority_score, then by address as tiebreaker
+  const sorted = [...anomalies]
+    .filter((a) => a.latitude != null && a.longitude != null)
+    .sort((a, b) => {
+      const scoreDiff = (b.priority_score ?? 0) - (a.priority_score ?? 0);
+      if (scoreDiff !== 0) return scoreDiff;
+      return (a.street_address || "").localeCompare(b.street_address || "");
+    });
+
+  if (countEl) {
+    countEl.textContent = `${sorted.length} anomalies`;
+  }
+
+  tbody.innerHTML = sorted
+    .map((a, i) => {
+      const score = a.priority_score ?? 0;
+      let scoreClass = "score-low";
+      if (score >= 7) scoreClass = "score-high";
+      else if (score >= 4) scoreClass = "score-medium";
+
+      const typeLabel = ANOMALY_LABELS[a.anomaly_type] || a.anomaly_type;
+      const badgeClass = `table-badge table-badge-${a.anomaly_type}`;
+
+      return `<tr data-parcel-id="${a.parcel_id}"
+                  data-lat="${a.latitude}"
+                  data-lng="${a.longitude}">
+        <td>${i + 1}</td>
+        <td>${a.street_address || "—"}</td>
+        <td><span class="${badgeClass}">${typeLabel}</span></td>
+        <td class="${scoreClass}">${score}</td>
+      </tr>`;
+    })
+    .join("");
+
+  // Delegate click handler on tbody
+  tbody.addEventListener("click", (e) => {
+    const row = e.target.closest("tr");
+    if (!row) return;
+    const parcelId = row.dataset.parcelId;
+    const lat = parseFloat(row.dataset.lat);
+    const lng = parseFloat(row.dataset.lng);
+    execRowClick(parcelId, lat, lng);
+  });
+}
+
+/**
+ * Handle executive table row click: fly map to coordinates + load detail.
+ */
+function execRowClick(parcelId, lat, lng) {
+  if (!parcelId || !mapViewRef) return;
+
+  // 1. Fly the map to the property
+  mapViewRef.goTo(
+    { center: [lng, lat], zoom: 17 },
+    { duration: 800 }
+  );
+
+  // 2. Highlight the row
+  highlightTableRow(parcelId);
+
+  // 3. Populate the detail panel (reuses existing lazy-fetch pattern)
+  handlePinClick(parcelId);
+}
+
+/**
+ * Highlight a table row by parcel_id and scroll it into view.
+ * Called from both row click and map pin click (bidirectional sync).
+ */
+function highlightTableRow(parcelId) {
+  const tbody = document.getElementById("anomaly-tbody");
+  if (!tbody) return;
+
+  // Remove active class from all rows
+  tbody.querySelectorAll("tr.row-active").forEach((r) => r.classList.remove("row-active"));
+
+  if (!parcelId) return;
+
+  // Find matching row(s) — parcel_id may appear more than once
+  const target = tbody.querySelector(`tr[data-parcel-id="${parcelId}"]`);
+  if (target) {
+    target.classList.add("row-active");
+    target.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Click Handler: Pin click → fetch full data → populate panel
 // ---------------------------------------------------------------------------
 
 async function handlePinClick(parcelId) {
   if (!parcelId) return;
+
+  // Mobile UX: Auto-switch to detail tab when a pin is clicked
+  switchMobileTab("detail-panel");
 
   const panel = document.getElementById("panel-content");
   if (panel) {
@@ -317,8 +470,61 @@ async function handlePinClick(parcelId) {
 // Main
 // ---------------------------------------------------------------------------
 
-async function main() {
+let arcgisGraphic = null;
+let mainGraphicsLayer = null;
+
+async function loadMapData(typeFilter = "", minScoreFilter = "") {
   showOverlay("loading", "Loading anomaly data…");
+
+  // 1. Reset state (The Canvas Purification)
+  if (mainGraphicsLayer) {
+    mainGraphicsLayer.removeAll();
+  }
+  fullAnomalyCache = null; // Clear detail cache
+  resetPanel();            // Clear the detail side panel
+  
+  const tbody = document.getElementById("anomaly-tbody");
+  if (tbody) tbody.innerHTML = "";
+  
+  // 2. Build URL
+  let url = ANOMALIES_LIGHT_URL;
+  const params = [];
+  if (typeFilter) params.push(`type=${encodeURIComponent(typeFilter)}`);
+  if (minScoreFilter) params.push(`min_score=${encodeURIComponent(minScoreFilter)}`);
+  if (params.length > 0) {
+    url += (url.includes("?") ? "&" : "?") + params.join("&");
+  }
+
+  // 3. Fetch Data
+  let lightAnomalies = [];
+  try {
+    const lightData = await fetchAPI(url);
+    lightAnomalies = lightData.anomalies || [];
+
+    if (lightAnomalies.length === 0) {
+      showOverlay("loading", "No anomalies match the current filters.");
+      document.getElementById("exec-count").textContent = "(0)";
+      return;
+    }
+
+    if (arcgisGraphic && mainGraphicsLayer) {
+      const graphics = buildGraphics(arcgisGraphic, lightAnomalies);
+      mainGraphicsLayer.addMany(graphics);
+      console.log(`[Vacancy Watch] ${graphics.length} pin(s) loaded using filter type=${typeFilter} score=${minScoreFilter}`);
+    }
+
+    // 4. Render Table
+    renderExecTable(lightAnomalies);
+    showOverlay("hide");
+    
+  } catch (err) {
+    console.error("[Vacancy Watch] Failed to load filtered anomalies:", err);
+    showOverlay("error", `Failed to load anomalies: ${err.message}`);
+  }
+}
+
+async function main() {
+  showOverlay("loading", "Initializing map…");
 
   // 1. Import ArcGIS modules
   const [Graphic, Map, GraphicsLayer] = await $arcgis.import([
@@ -326,43 +532,45 @@ async function main() {
     "@arcgis/core/Map.js",
     "@arcgis/core/layers/GraphicsLayer.js",
   ]);
+  
+  arcgisGraphic = Graphic;
+  mainGraphicsLayer = new GraphicsLayer({ title: "Anomalies" });
 
   // 2. Grab the map element
   const mapElem = document.querySelector("arcgis-map");
 
-  // 3. Create GraphicsLayer + Map
-  const graphicsLayer = new GraphicsLayer({ title: "Anomalies" });
+  // 3. Create Map
   mapElem.map = new Map({
     basemap: "arcgis/topographic",
-    layers: [graphicsLayer],
+    layers: [mainGraphicsLayer],
   });
 
-  // 4. Fetch lightweight data for pins
-  try {
-    const lightData = await fetchAPI(ANOMALIES_LIGHT_URL);
-
-    if (lightData.anomalies.length === 0) {
-      showOverlay("loading", "No anomalies found. Run the anomaly generator first.");
-      return;
-    }
-
-    const graphics = buildGraphics(Graphic, lightData.anomalies);
-    graphicsLayer.addMany(graphics);
-
-    console.log(
-      `[Vacancy Watch] ${graphics.length} pin(s) loaded (cache: ${lightData.generated_at})`
-    );
-    showOverlay("hide");
-  } catch (err) {
-    console.error("[Vacancy Watch] Failed to load anomalies:", err);
-    showOverlay(
-      "error",
-      `Failed to load anomalies: ${err.message}. Is the backend running on port 8080?`
-    );
-    return;
+  // 4. Store MapView reference
+  mapViewRef = mapElem.view;
+  if (!mapViewRef) {
+    await new Promise((resolve) => {
+      mapElem.addEventListener("arcgisViewReadyChange", () => {
+        mapViewRef = mapElem.view;
+        resolve();
+      }, { once: true });
+    });
   }
 
-  // 5. Wire up click handler: pin click → panel population
+  // 5. Initial Data Load
+  await loadMapData();
+
+  // 6. Wire up Filter Listeners
+  const typeSelect = document.getElementById("filter-type");
+  const scoreSelect = document.getElementById("filter-score");
+  
+  const handleFilterChange = () => {
+    loadMapData(typeSelect.value, scoreSelect.value);
+  };
+  
+  if (typeSelect) typeSelect.addEventListener("change", handleFilterChange);
+  if (scoreSelect) scoreSelect.addEventListener("change", handleFilterChange);
+
+  // 7. Wire up click handler: pin click → panel + table sync
   mapElem.addEventListener("arcgisViewClick", async (event) => {
     const view = mapElem.view;
     if (!view) return;
@@ -375,10 +583,14 @@ async function main() {
     if (graphicHit) {
       const parcelId = graphicHit.graphic.getAttribute("parcel_id");
       handlePinClick(parcelId);
+      highlightTableRow(parcelId);   // ← Module 3.4: sync table row
     } else {
       resetPanel();
+      highlightTableRow(null);       // ← clear table highlight
     }
   });
+  // 7. Initialize mobile tabs
+  initMobileTabs();
 }
 
 main();

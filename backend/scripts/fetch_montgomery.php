@@ -169,67 +169,95 @@ function calculateCentroid(array $rings): array
 // ---------------------------------------------------------------------------
 
 /**
- * Fetch all records from a single ArcGIS FeatureServer endpoint with pagination.
+ * Stream all records from a single ArcGIS FeatureServer endpoint to a file.
+ * Writes each page directly to disk to avoid accumulating all features in RAM.
+ * RAM usage stays flat regardless of total dataset size.
+ *
+ * Uses $isFirstPage flag to handle JSON comma separation without trailing commas.
  *
  * @param  string $baseUrl      FeatureServer layer URL
  * @param  string $geometryType 'Point' or 'Polygon'
- * @return array                ['features' => [...], 'count' => int]
+ * @param  string $filepath     Destination file path
+ * @return int                  Total number of records written
  */
-function fetchAllRecords(string $baseUrl, string $geometryType): array
+function streamAllRecords(string $baseUrl, string $geometryType, string $filepath): int
 {
-    $allFeatures = [];
     $offset = 0;
     $queryUrl = $baseUrl . '/query';
+    $totalCount = 0;
+    $isFirstPage = true;
 
-    while ($offset < MAX_RECORDS) {
-        // Build query parameters per ArcGIS REST API docs
-        $params = [
-            'where'             => '1=1',
-            'outFields'         => '*',
-            'outSR'             => '4326',
-            'returnGeometry'    => 'true',
-            'resultRecordCount' => (string) PAGE_SIZE,
-            'resultOffset'      => (string) $offset,
-            'f'                 => 'json',
-        ];
+    // Open file and start JSON structure
+    $fh = fopen($filepath, 'w');
+    if (!$fh) {
+        throw new RuntimeException("Cannot open file for writing: $filepath");
+    }
+    fwrite($fh, '{"features":[');
 
-        // Polygon endpoints: request centroid for POINT column compatibility
-        if ($geometryType === 'Polygon') {
-            $params['returnCentroid'] = 'true';
-        }
+    try {
+        while ($offset < MAX_RECORDS) {
+            // Build query parameters per ArcGIS REST API docs
+            $params = [
+                'where'             => '1=1',
+                'outFields'         => '*',
+                'outSR'             => '4326',
+                'returnGeometry'    => 'true',
+                'resultRecordCount' => (string) PAGE_SIZE,
+                'resultOffset'      => (string) $offset,
+                'f'                 => 'json',
+            ];
 
-        $url = $queryUrl . '?' . http_build_query($params);
-        $data = fetchUrl($url);
-
-        $features = $data['features'] ?? [];
-        if (empty($features)) {
-            break;
-        }
-
-        // For polygon features: ensure centroid is available
-        if ($geometryType === 'Polygon') {
-            foreach ($features as &$feature) {
-                // If API returned centroid, use it. Otherwise, calculate from geometry.
-                if (!isset($feature['centroid']) && isset($feature['geometry']['rings'])) {
-                    $feature['centroid'] = calculateCentroid($feature['geometry']['rings']);
-                }
+            // Polygon endpoints: request centroid for POINT column compatibility
+            if ($geometryType === 'Polygon') {
+                $params['returnCentroid'] = 'true';
             }
-            unset($feature);
+
+            $url = $queryUrl . '?' . http_build_query($params);
+            $data = fetchUrl($url);
+
+            $features = $data['features'] ?? [];
+            if (empty($features)) {
+                break;
+            }
+
+            // For polygon features: ensure centroid is available
+            if ($geometryType === 'Polygon') {
+                foreach ($features as &$feature) {
+                    if (!isset($feature['centroid']) && isset($feature['geometry']['rings'])) {
+                        $feature['centroid'] = calculateCentroid($feature['geometry']['rings']);
+                    }
+                }
+                unset($feature);
+            }
+
+            // Write each feature to disk immediately (one page at a time in RAM)
+            foreach ($features as $feature) {
+                if (!$isFirstPage || $feature !== $features[0]) {
+                    // Comma before every feature except the very first one
+                    fwrite($fh, ',');
+                } elseif ($isFirstPage && $feature === $features[0]) {
+                    // No comma before the first feature of the first page
+                }
+                fwrite($fh, json_encode($feature, JSON_UNESCAPED_UNICODE));
+            }
+
+            $isFirstPage = false;
+            $totalCount += count($features);
+            $offset += PAGE_SIZE;
+
+            // Stop if the server signals no more records
+            if (!($data['exceededTransferLimit'] ?? false)) {
+                break;
+            }
         }
 
-        $allFeatures = array_merge($allFeatures, $features);
-        $offset += PAGE_SIZE;
-
-        // Stop if the server signals no more records
-        if (!($data['exceededTransferLimit'] ?? false)) {
-            break;
-        }
+        // Close JSON structure
+        fwrite($fh, '],"count":' . $totalCount . '}');
+    } finally {
+        fclose($fh);
     }
 
-    return [
-        'features' => $allFeatures,
-        'count'    => count($allFeatures),
-    ];
+    return $totalCount;
 }
 
 // ---------------------------------------------------------------------------
@@ -275,21 +303,18 @@ foreach (ENDPOINTS as $endpoint) {
     $geom = $endpoint['geometryType'];
 
     try {
-        $result = fetchAllRecords($url, $geom);
-
-        // Save raw JSON with timestamp
         $filename = $slug . '_' . date('Y-m-d') . '.json';
         $filepath = $rawDir . DIRECTORY_SEPARATOR . $filename;
-        file_put_contents($filepath, json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        $count = streamAllRecords($url, $geom, $filepath);
 
         $report['datasets'][] = [
             'name'     => $slug,
-            'records'  => $result['count'],
+            'records'  => $count,
             'file'     => $filename,
             'geometry' => $geom,
         ];
 
-        error_log("[OK] $slug: {$result['count']} records -> $filename");
+        error_log("[OK] $slug: {$count} records -> $filename");
 
     } catch (RuntimeException $e) {
         $report['errors'][] = [

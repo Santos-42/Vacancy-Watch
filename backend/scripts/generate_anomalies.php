@@ -28,10 +28,15 @@ declare(strict_types=1);
 /** Max anomalies per scenario (agent.md §5.3) */
 const ANOMALY_LIMIT = 50;
 
-/** Time windows for anomaly detection (days from CURDATE()) */
-// NOTE: Montgomery data ends ~2024-12; widened to reach historical records.
-const ZOMBIE_WINDOW_DAYS = 730;
-const GHOST_WINDOW_DAYS  = 730;
+/**
+ * Anomaly detection window (days counted back from the LATEST data in the DB,
+ * NOT from today). This makes the engine resilient to government data update
+ * delays. COALESCE fallback to CURDATE() handles empty-database bootstrap.
+ */
+const ANOMALY_WINDOW_DAYS = 365;
+
+/** SQL subquery: dynamic time anchor — latest violation date, or today if DB is empty */
+const SQL_TIME_ANCHOR = 'COALESCE((SELECT MAX(date_filed) FROM code_violations), CURDATE())';
 
 // ---------------------------------------------------------------------------
 // Environment & Database (reuse from etl_montgomery.php)
@@ -97,7 +102,10 @@ function findZombieProperties(PDO $pdo): array
             ON vr.property_id = p.id
         INNER JOIN code_violations cv
             ON cv.property_id = p.id
-            AND cv.date_filed >= DATE_SUB(CURDATE(), INTERVAL :window DAY)
+            AND cv.date_filed >= DATE_SUB(
+                " . SQL_TIME_ANCHOR . ",
+                INTERVAL :window DAY
+            )
         GROUP BY
             p.id, p.parcel_id, p.street_address, p.latitude, p.longitude,
             vr.status
@@ -107,7 +115,7 @@ function findZombieProperties(PDO $pdo): array
     ";
 
     $stmt = $pdo->prepare($sql);
-    $stmt->bindValue(':window', ZOMBIE_WINDOW_DAYS, PDO::PARAM_INT);
+    $stmt->bindValue(':window', ANOMALY_WINDOW_DAYS, PDO::PARAM_INT);
     $stmt->bindValue(':lim', ANOMALY_LIMIT, PDO::PARAM_INT);
     $stmt->execute();
 
@@ -125,7 +133,7 @@ function findZombieProperties(PDO $pdo): array
                 'violation_count'        => (int) $row['violation_count'],
                 'latest_violation_date'  => $row['latest_violation_date'],
                 'latest_violation_type'  => $row['latest_violation_type'],
-                'window_days'            => ZOMBIE_WINDOW_DAYS,
+                'window_days'            => ANOMALY_WINDOW_DAYS,
             ],
         ];
     }
@@ -156,8 +164,12 @@ function findGhostPermits(PDO $pdo): array
                 SELECT COUNT(*)
                 FROM code_violations cv
                 WHERE cv.property_id = p.id
-                  AND cv.date_filed >= DATE_SUB(CURDATE(), INTERVAL :window DAY)
-            )                       AS open_violations
+                  AND cv.date_filed >= DATE_SUB(
+                    " . SQL_TIME_ANCHOR . ",
+                    INTERVAL :window DAY
+                  )
+            )                       AS open_violations,
+            " . SQL_TIME_ANCHOR . " AS _data_anchor
         FROM construction_permits cp
         INNER JOIN properties p
             ON cp.property_id = p.id
@@ -165,7 +177,10 @@ function findGhostPermits(PDO $pdo): array
             ON vr.property_id = p.id
         LEFT JOIN code_violations cv
             ON cv.property_id = p.id
-            AND cv.date_filed >= DATE_SUB(CURDATE(), INTERVAL :window2 DAY)
+            AND cv.date_filed >= DATE_SUB(
+                " . SQL_TIME_ANCHOR . ",
+                INTERVAL :window2 DAY
+            )
         WHERE
             cp.status IN ('ISSUED', 'Pending')
             AND (
@@ -182,16 +197,18 @@ function findGhostPermits(PDO $pdo): array
     ";
 
     $stmt = $pdo->prepare($sql);
-    $stmt->bindValue(':window', GHOST_WINDOW_DAYS, PDO::PARAM_INT);
-    $stmt->bindValue(':window2', GHOST_WINDOW_DAYS, PDO::PARAM_INT);
+    $stmt->bindValue(':window', ANOMALY_WINDOW_DAYS, PDO::PARAM_INT);
+    $stmt->bindValue(':window2', ANOMALY_WINDOW_DAYS, PDO::PARAM_INT);
     $stmt->bindValue(':lim', ANOMALY_LIMIT, PDO::PARAM_INT);
     $stmt->execute();
 
     $results = [];
     while ($row = $stmt->fetch()) {
         // Priority: older permits + more violations = higher score
+        // Anchor age calculation to latest data date, not wall-clock time
+        $anchorTs = $row['_data_anchor'] ? strtotime($row['_data_anchor']) : time();
         $ageDays = $row['issue_date']
-            ? (int) ((time() - strtotime($row['issue_date'])) / 86400)
+            ? (int) (($anchorTs - strtotime($row['issue_date'])) / 86400)
             : 0;
         $score = min(10, (int) ($ageDays / 60) + (int) $row['open_violations']);
 
@@ -209,7 +226,7 @@ function findGhostPermits(PDO $pdo): array
                 'permit_status'   => $row['permit_status'],
                 'is_vacant'       => (bool) $row['is_vacant'],
                 'open_violations' => (int) $row['open_violations'],
-                'window_days'     => GHOST_WINDOW_DAYS,
+                'window_days'     => ANOMALY_WINDOW_DAYS,
             ],
         ];
     }
@@ -368,9 +385,13 @@ if (!is_dir($cacheDir)) {
     mkdir($cacheDir, 0755, true);
 }
 
-file_put_contents($cachePath, json_encode($cachePayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+// Atomic write: write to temp file, then rename to avoid race conditions.
+// If get_anomalies.php reads mid-write, it gets the old complete file, never a truncated one.
+$tempPath = $cachePath . '.tmp';
+file_put_contents($tempPath, json_encode($cachePayload, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+rename($tempPath, $cachePath);
 
-error_log("[OK] Cache written to: $cachePath ({$summary['total']} anomalies)");
+error_log("[OK] Cache written atomically to: $cachePath ({$summary['total']} anomalies)");
 
 // Output summary to stdout
 echo json_encode([

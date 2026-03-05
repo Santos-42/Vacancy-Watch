@@ -1,0 +1,339 @@
+/* =============================================================================
+ * Vacancy Watch — Frontend Styles (Module 3.1 + 3.2)
+ * =============================================================================
+ * Layout: map canvas + executive detail panel. Vanilla CSS only.
+ * =========================================================================== */
+
+/* ── Reset & Full-viewport ─────────────────────────────────────────────────── */
+
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  font-family: "Avenir Next", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  background: #1a1a2e;
+}
+
+/* ── App Layout (Map + Panel side by side) ─────────────────────────────────── */
+
+#app-layout {
+  display: flex;
+  height: 100%;
+  width: 100%;
+}
+
+/* ── ArcGIS Map Component ──────────────────────────────────────────────────── */
+
+#map-view {
+  display: block;
+  flex: 1;
+  height: 100%;
+  min-width: 0;
+}
+
+/* ── Executive Detail Panel (Module 3.2) ───────────────────────────────────── */
+
+#detail-panel {
+  width: 360px;
+  height: 100%;
+  background: #16213e;
+  color: #e0e0e0;
+  overflow-y: auto;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+}
+
+.panel-header {
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #0f3460, #16213e);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.panel-header h2 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: 0.3px;
+}
+
+.panel-body {
+  flex: 1;
+  padding: 16px 20px;
+  overflow-y: auto;
+}
+
+.panel-placeholder {
+  color: #8892a4;
+  font-size: 14px;
+  text-align: center;
+  margin-top: 40px;
+  line-height: 1.6;
+}
+
+/* ── Panel Loading Spinner (first-click latency) ───────────────────────────── */
+
+.panel-spinner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  margin-top: 60px;
+}
+
+.panel-spinner::before {
+  content: '';
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-top-color: #53a8b6;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Detail Card (Module 3.2 — rendered by app.js on pin click) ────────────── */
+
+.detail-card {
+  margin-bottom: 20px;
+}
+
+.detail-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.anomaly-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #fff;
+}
+
+.badge-zombie_property       { background: rgba(220, 53, 69, 0.85); }
+.badge-ghost_permit          { background: rgba(255, 193, 7, 0.85); color: #1a1a2e; }
+.badge-government_blind_spot { background: rgba(13, 110, 253, 0.85); }
+
+.detail-address {
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 4px;
+}
+
+.detail-parcel {
+  font-size: 12px;
+  color: #8892a4;
+  margin-bottom: 16px;
+}
+
+/* ── Data rows ─────────────────────────────────────────────────────────────── */
+
+.detail-section {
+  margin-bottom: 16px;
+}
+
+.detail-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #53a8b6;
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 6px 0;
+  font-size: 13px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.detail-label {
+  color: #8892a4;
+  flex-shrink: 0;
+  margin-right: 12px;
+}
+
+.detail-value {
+  color: #e0e0e0;
+  font-weight: 500;
+  text-align: right;
+  word-break: break-word;
+}
+
+.detail-value.highlight {
+  color: #ff6b6b;
+  font-weight: 700;
+}
+
+/* ── Priority Score — dominant visual hierarchy ───────────────────────────── */
+
+.priority-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 16px 0;
+  padding: 14px 16px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.priority-score-ring {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+}
+
+.priority-score-ring svg {
+  width: 56px;
+  height: 56px;
+  transform: rotate(-90deg);
+}
+
+.priority-score-ring .ring-bg {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.08);
+  stroke-width: 4;
+}
+
+.priority-score-ring .ring-fill {
+  fill: none;
+  stroke-width: 4;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.6s ease;
+}
+
+.priority-score-ring .score-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 800;
+  color: #fff;
+}
+
+.priority-info {
+  flex: 1;
+}
+
+.priority-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #8892a4;
+  margin-bottom: 2px;
+}
+
+.priority-level {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.level-low    { color: #2ecc71; }
+.level-medium { color: #f39c12; }
+.level-high   { color: #e74c3c; }
+
+.ring-low    { stroke: #2ecc71; }
+.ring-medium { stroke: #f39c12; }
+.ring-high   { stroke: #e74c3c; }
+
+/* Pulsing glow for high-priority anomalies */
+.priority-wrapper.priority-pulse {
+  animation: urgencyPulse 2s ease-in-out infinite;
+}
+
+@keyframes urgencyPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); }
+  50%      { box-shadow: 0 0 16px 2px rgba(231, 76, 60, 0.3); }
+}
+
+/* ── Screen-reader only (SEO: h1 present but hidden) ───────────────────────── */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── Status Overlay (Module 3.2 — loading / error states) ──────────────────── */
+
+.status-overlay {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  max-width: 90%;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+}
+
+.status-loading {
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+}
+
+.status-error {
+  background: rgba(220, 53, 69, 0.9);
+  color: #fff;
+  pointer-events: auto;
+}
+
+/* ── Responsive: Panel → Bottom Sheet on small screens ─────────────────────── */
+
+@media (max-width: 768px) {
+  #app-layout {
+    flex-direction: column;
+  }
+
+  #map-view {
+    flex: 1;
+    height: auto;
+    min-height: 55vh;
+  }
+
+  #detail-panel {
+    width: 100%;
+    height: 45vh;
+    max-height: 45vh;
+    border-left: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+  }
+}

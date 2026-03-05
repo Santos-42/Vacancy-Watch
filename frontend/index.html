@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, shrink-to-fit=no"
+    />
+    <meta
+      name="description"
+      content="Vacancy Watch — Interactive map of anomalous vacant properties in Montgomery, AL."
+    />
+    <title>Vacancy Watch — Montgomery Property Anomaly Map</title>
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/index.css" />
+
+    <!--
+        ArcGIS API Key
+        ══════════════════════════════════════════════════════════════════════
+        SECURITY: This key is visible in the browser (Inspect Element).
+        You MUST set a Referrer Restriction on your ArcGIS Developer
+        Dashboard so that this key only works when called from:
+            http://localhost
+        Without this restriction, anyone can steal your key and drain
+        your basemap tile quota.
+        ══════════════════════════════════════════════════════════════════════
+    -->
+    <script>
+      var esriConfig = {
+        apiKey: "AAPTac3qQpbK0D8YDUFMCGb-ryg..AdKtUG25Fs-P04jn2lw_R9XGXL-rsC5Mu0B4CwRvYF5SVhJnshlj_DXvqQbtMTrUBgOUTeL0jfFN8ITsC2zBy5XX-lzG5hne88u2lZiGbq8YwihPMr9weulnGOTD8RsLwYvghOHP4Oicb0VBP4uTrpxhD2xQEKHfP9yEFYCemwt4h0KpcjhcxcEZgI0iYtF2e8uYSuoIJP2Yz-oWJ6AaevnfOfU0s9jP4Aawmr_3sA6UFFkVL5s43UBFAT1_DvBbvun8",
+      };
+    </script>
+
+    <!-- Load ArcGIS Maps SDK for JavaScript v5.0 from CDN -->
+    <script type="module" src="https://js.arcgis.com/5.0/"></script>
+  </head>
+
+  <body>
+    <!-- SEO: single h1, visually hidden — map is the full page -->
+    <h1 class="sr-only">Vacancy Watch — Montgomery, AL Property Anomaly Map</h1>
+
+    <!-- ── Layout: Map + Executive Panel ─────────────────────── -->
+    <div id="app-layout">
+
+      <!-- Map canvas (Module 3.1) -->
+      <arcgis-map
+        id="map-view"
+        basemap="arcgis/topographic"
+        center="-86.2999, 32.3668"
+        zoom="13"
+      >
+        <arcgis-zoom position="top-left"></arcgis-zoom>
+      </arcgis-map>
+
+      <!-- Executive Detail Panel (Module 3.2) -->
+      <aside id="detail-panel">
+        <header class="panel-header">
+          <h2>Anomaly Detail</h2>
+        </header>
+
+        <div id="panel-content" class="panel-body">
+          <p class="panel-placeholder">Click a pin on the map to inspect anomaly details.</p>
+        </div>
+      </aside>
+
+    </div>
+
+    <!-- Application logic (Module 3.2) -->
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>

@@ -9,7 +9,7 @@
 --
 -- Requirements enforced:
 --   • Coordinates stored as DECIMAL(10,8) / DECIMAL(11,8), never VARCHAR.
---   • POINT geometry column with SPATIAL INDEX for millisecond radius queries.
+--   • POINT geometry column (SPATIAL INDEX omitted for MariaDB compat).
 --   • Foreign keys on every child table referencing properties(id).
 --   • created_at / updated_at timestamps on every table.
 --   • source_id for idempotent API upserts.
@@ -42,9 +42,11 @@ CREATE TABLE properties (
   longitude      DECIMAL(11, 8)  NOT NULL,
 
   -- Auto-computed geometry — MySQL derives this from lat/lng on every INSERT/UPDATE.
-  -- Eliminates human error; SPATIAL INDEX stays in perfect sync automatically.
+  -- Eliminates human error; geom_location stays in perfect sync automatically.
+  -- NOTE: Uses ST_GeomFromText + CONCAT instead of ST_SRID(POINT(), 4326)
+  --        for compatibility with MySQL 5.7 / MariaDB 10.x (XAMPP default).
   geom_location  POINT
-    GENERATED ALWAYS AS (ST_SRID(POINT(longitude, latitude), 4326)) STORED NOT NULL
+    GENERATED ALWAYS AS (ST_GeomFromText(CONCAT('POINT(', longitude, ' ', latitude, ')'), 4326)) STORED
     COMMENT 'Generated column; never set manually',
 
   created_at     TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -55,8 +57,10 @@ CREATE TABLE properties (
   PRIMARY KEY (id),
   UNIQUE  KEY uk_parcel_id          (parcel_id),
   INDEX   idx_address_zip           (street_address, zip_code),
-  INDEX   idx_ownership_type        (ownership_type),
-  SPATIAL INDEX idx_geom_location   (geom_location)
+  INDEX   idx_ownership_type        (ownership_type)
+  -- NOTE: SPATIAL INDEX removed — MariaDB requires NOT NULL for SPATIAL INDEX
+  --       but disallows NOT NULL on STORED generated columns. All anomaly queries
+  --       JOIN on property_id, not spatial lookup. Re-add if migrating to MySQL 8.0+.
 ) ENGINE=InnoDB;
 
 -- =============================================================================

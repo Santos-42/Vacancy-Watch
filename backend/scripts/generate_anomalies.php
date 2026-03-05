@@ -28,9 +28,10 @@ declare(strict_types=1);
 /** Max anomalies per scenario (agent.md §5.3) */
 const ANOMALY_LIMIT = 50;
 
-/** Time windows for anomaly detection */
-const ZOMBIE_WINDOW_DAYS = 90;
-const GHOST_WINDOW_DAYS  = 180;
+/** Time windows for anomaly detection (days from CURDATE()) */
+// NOTE: Montgomery data ends ~2024-12; widened to reach historical records.
+const ZOMBIE_WINDOW_DAYS = 730;
+const GHOST_WINDOW_DAYS  = 730;
 
 // ---------------------------------------------------------------------------
 // Environment & Database (reuse from etl_montgomery.php)

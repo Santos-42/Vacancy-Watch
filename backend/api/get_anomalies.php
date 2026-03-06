@@ -65,40 +65,45 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
 }
 
 // ---------------------------------------------------------------------------
-// Locate and read cache file
+// Locate and read cache file (WITH AUTO-HEAL)
 // ---------------------------------------------------------------------------
 
 $cacheFile = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'data' . DIRECTORY_SEPARATOR . 'anomalies_cache.json';
-
-if (!file_exists($cacheFile)) {
-    http_response_code(503);
-    echo json_encode([
-        'error'  => 'Cache not generated yet. Run: php backend/scripts/generate_anomalies.php',
-        'status' => 'unavailable',
-    ]);
-    exit;
-}
-
-// ---------------------------------------------------------------------------
-// TTL Validation — reject cache older than 48 hours
-// ---------------------------------------------------------------------------
+$needsHeal = false;
 
 /** Maximum cache age in seconds (48 hours) */
 const CACHE_TTL_SECONDS = 48 * 60 * 60;
 
-$cacheAge = time() - filemtime($cacheFile);
-
-if ($cacheAge > CACHE_TTL_SECONDS) {
-    http_response_code(503);
-    $staleHours = round($cacheAge / 3600, 1);
-    echo json_encode([
-        'error'     => "Cache is stale ({$staleHours}h old, TTL is 48h). "
-                     . 'Run: php backend/scripts/generate_anomalies.php',
-        'status'    => 'stale',
-        'cache_age' => $staleHours . 'h',
-    ]);
-    exit;
+if (!file_exists($cacheFile)) {
+    $needsHeal = true;
+} else {
+    $cacheAge = time() - filemtime($cacheFile);
+    if ($cacheAge > CACHE_TTL_SECONDS) {
+        $needsHeal = true;
+    }
 }
+
+// AUTO-HEAL SYSTEM: If cache is missing or stale, rebuild it this exact second.
+if ($needsHeal) {
+    $generateScript = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'scripts' . DIRECTORY_SEPARATOR . 'generate_anomalies.php';
+    
+    // Execute generator script synchronously, force memory limit
+    exec("php -d memory_limit=512M " . escapeshellarg($generateScript) . " > /dev/null 2>&1");
+    
+    // Final validation: Ensure the cache file was actually created after execution
+    if (!file_exists($cacheFile)) {
+        http_response_code(500); // 500 because this is an internal server failure preventing auto-heal
+        echo json_encode([
+            'error' => 'Auto-heal failed. Cannot generate cache.',
+            'status' => 'fatal_error'
+        ]);
+        exit;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Load Cache
+// ---------------------------------------------------------------------------
 
 $raw   = file_get_contents($cacheFile);
 $cache = json_decode($raw, true);

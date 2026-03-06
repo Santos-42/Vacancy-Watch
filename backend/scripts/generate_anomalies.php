@@ -63,7 +63,7 @@ function loadEnv(string $path): array
 
 function createPDO(array $env): PDO
 {
-    // Prioritaskan getenv() dari server Render. Jika kosong, baru baca array lokal.
+    // Prioritaskan Environment Variables dari server Render. Jika tidak ada, fallback ke array (lokal).
     $host = getenv('DB_HOST') ?: ($env['DB_HOST'] ?? 'localhost');
     $port = getenv('DB_PORT') ?: ($env['DB_PORT'] ?? '3306');
     $db   = getenv('DB_NAME') ?: ($env['DB_NAME'] ?? 'vacancy_watch');

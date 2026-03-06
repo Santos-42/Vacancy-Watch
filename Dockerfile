@@ -1,6 +1,14 @@
 # Gunakan image PHP resmi dengan Apache
 FROM php:8.2-apache
 
+# RETASAN BARU: Instal alat dasar Linux agar Composer bisa mengunduh dan mengekstrak ZIP
+RUN apt-get update && apt-get install -y \
+    git \
+    unzip \
+    libzip-dev \
+    && docker-php-ext-install zip \
+    && rm -rf /var/lib/apt/lists/*
+
 # RETASAN 1: Gunakan mlocati untuk mengunduh ekstensi yang sudah jadi, 
 # bukan mengkompilasi dari awal. Ini menghemat 90% RAM dan Waktu Build.
 COPY --from=mlocati/php-extension-installer /usr/bin/install-php-extensions /usr/local/bin/

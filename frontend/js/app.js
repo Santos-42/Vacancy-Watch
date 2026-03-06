@@ -21,7 +21,7 @@
 // Configuration
 // ---------------------------------------------------------------------------
 
-const API_BASE = "http://localhost/vacancy-watch/backend/api";
+const API_BASE = "https://vacancy-watch.onrender.com/backend/api";
 const ANOMALIES_LIGHT_URL = `${API_BASE}/get_anomalies.php?mode=light`;
 const ANOMALIES_FULL_URL = `${API_BASE}/get_anomalies.php`;
 

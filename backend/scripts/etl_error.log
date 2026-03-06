@@ -1,0 +1,10 @@
+[OK] Connected to MySQL at mysql-vacancy-riosantoso6090-fa46.i.aivencloud.com:22338
+PHP Fatal error:  Uncaught Error: Class "JsonMachine\Items" not found in D:\Vacancy Watch\backend\scripts\etl_montgomery.php:809
+Stack trace:
+#0 {main}
+  thrown in D:\Vacancy Watch\backend\scripts\etl_montgomery.php on line 809
+
+Fatal error: Uncaught Error: Class "JsonMachine\Items" not found in D:\Vacancy Watch\backend\scripts\etl_montgomery.php:809
+Stack trace:
+#0 {main}
+  thrown in D:\Vacancy Watch\backend\scripts\etl_montgomery.php on line 809

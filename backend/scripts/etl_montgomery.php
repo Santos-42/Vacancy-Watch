@@ -18,6 +18,8 @@
 
 declare(strict_types=1);
 
+require dirname(__DIR__, 2) . '/vendor/autoload.php';
+
 // ---------------------------------------------------------------------------
 // Configuration
 // ---------------------------------------------------------------------------
@@ -304,11 +306,42 @@ function upsertProperties(PDO $pdo, array $propertyRows): array
 // Dataset processors (Transform + Load)
 // ---------------------------------------------------------------------------
 
-function processCodeViolations(PDO $pdo, array $features, array $config): array
+function processCodeViolations(PDO $pdo, iterable $features, array $config): array
 {
     $propertyRows = [];
     $childRows = [];
     $skipped = 0;
+
+    $inserted = 0;
+    $properties = 0;
+
+    $flush = function() use (&$propertyRows, &$childRows, $pdo, &$inserted, &$properties) {
+        if (empty($propertyRows)) return;
+        $idMap = upsertProperties($pdo, array_values($propertyRows));
+        $properties += count($idMap);
+
+        $insertRows = [];
+        foreach ($childRows as $row) {
+            $propId = $idMap[$row['parcel_id']] ?? null;
+            if ($propId === null) continue;
+            $row['property_id'] = $propId;
+            // Build strictly ordered array for insertion
+            $insertArr = [];
+            foreach (['property_id', 'source_id', 'case_number', 'date_filed', 'disposition', 'code_reference', 'condition_text'] as $col) {
+                $insertArr[] = $row[$col] ?? null;
+            }
+            $insertRows[] = $row; // Actually, let's just leave it associative and let bulkUpsert extract by column name
+        }
+
+        $inserted += bulkUpsert(
+            $pdo, 'code_violations',
+            ['property_id', 'source_id', 'case_number', 'date_filed', 'disposition', 'code_reference', 'condition_text'],
+            $insertRows,
+            ['date_filed', 'disposition', 'condition_text']
+        );
+        $propertyRows = [];
+        $childRows = [];
+    };
 
     foreach ($features as $feature) {
         $attrs = $feature['attributes'] ?? [];
@@ -381,11 +414,42 @@ function processCodeViolations(PDO $pdo, array $features, array $config): array
     return ['inserted' => $affected, 'skipped' => $skipped, 'properties' => count($idMap)];
 }
 
-function processConstructionPermits(PDO $pdo, array $features, array $config): array
+function processConstructionPermits(PDO $pdo, iterable $features, array $config): array
 {
     $propertyRows = [];
     $childRows = [];
     $skipped = 0;
+
+    $inserted = 0;
+    $properties = 0;
+
+    $flush = function() use (&$propertyRows, &$childRows, $pdo, &$inserted, &$properties) {
+        if (empty($propertyRows)) return;
+        $idMap = upsertProperties($pdo, array_values($propertyRows));
+        $properties += count($idMap);
+
+        $insertRows = [];
+        foreach ($childRows as $row) {
+            $propId = $idMap[$row['parcel_id']] ?? null;
+            if ($propId === null) continue;
+            $row['property_id'] = $propId;
+            // Build strictly ordered array for insertion
+            $insertArr = [];
+            foreach (['property_id', 'source_id', 'permit_number', 'permit_type', 'issue_date', 'status', 'description'] as $col) {
+                $insertArr[] = $row[$col] ?? null;
+            }
+            $insertRows[] = $row; // Actually, let's just leave it associative and let bulkUpsert extract by column name
+        }
+
+        $inserted += bulkUpsert(
+            $pdo, 'construction_permits',
+            ['property_id', 'source_id', 'permit_number', 'permit_type', 'issue_date', 'status', 'description'],
+            $insertRows,
+            ['issue_date', 'status', 'description']
+        );
+        $propertyRows = [];
+        $childRows = [];
+    };
 
     foreach ($features as $feature) {
         $attrs = $feature['attributes'] ?? [];
@@ -422,7 +486,7 @@ function processConstructionPermits(PDO $pdo, array $features, array $config): a
             'permit_number'  => $sourceId,
             'permit_type'    => $attrs['UseType'] ?? null,
             'issue_date'     => parseDate($attrs['IssuedDate'] ?? null),
-            'status'         => $attrs['PermitStatus'] ?? 'Pending',
+            'status'         => substr((string)($attrs['PermitStatus'] ?? 'Pending'), 0, 255),
             'description'    => $attrs['JobDescription'] ?? null,
         ];
     }
@@ -455,11 +519,42 @@ function processConstructionPermits(PDO $pdo, array $features, array $config): a
     return ['inserted' => $affected, 'skipped' => $skipped, 'properties' => count($idMap)];
 }
 
-function processVacantProperties(PDO $pdo, array $features, array $config): array
+function processVacantProperties(PDO $pdo, iterable $features, array $config): array
 {
     $propertyRows = [];
     $childRows = [];
     $skipped = 0;
+
+    $inserted = 0;
+    $properties = 0;
+
+    $flush = function() use (&$propertyRows, &$childRows, $pdo, &$inserted, &$properties) {
+        if (empty($propertyRows)) return;
+        $idMap = upsertProperties($pdo, array_values($propertyRows));
+        $properties += count($idMap);
+
+        $insertRows = [];
+        foreach ($childRows as $row) {
+            $propId = $idMap[$row['parcel_id']] ?? null;
+            if ($propId === null) continue;
+            $row['property_id'] = $propId;
+            // Build strictly ordered array for insertion
+            $insertArr = [];
+            foreach (['property_id', 'source_id', 'status'] as $col) {
+                $insertArr[] = $row[$col] ?? null;
+            }
+            $insertRows[] = $row; // Actually, let's just leave it associative and let bulkUpsert extract by column name
+        }
+
+        $inserted += bulkUpsert(
+            $pdo, 'vacant_registrations',
+            ['property_id', 'source_id', 'status'],
+            $insertRows,
+            ['status']
+        );
+        $propertyRows = [];
+        $childRows = [];
+    };
 
     foreach ($features as $feature) {
         $attrs = $feature['attributes'] ?? [];
@@ -493,7 +588,7 @@ function processVacantProperties(PDO $pdo, array $features, array $config): arra
         $childRows[] = [
             'parcel_id' => $parcelId,
             'source_id' => $sourceId,
-            'status'    => $attrs['NEW__Sus'] ?? 'Open',
+            'status'    => substr((string)($attrs['NEW__Sus'] ?? 'Open'), 0, 255),
         ];
     }
 
@@ -521,11 +616,42 @@ function processVacantProperties(PDO $pdo, array $features, array $config): arra
     return ['inserted' => $affected, 'skipped' => $skipped, 'properties' => count($idMap)];
 }
 
-function processSurplusProperties(PDO $pdo, array $features, array $config): array
+function processSurplusProperties(PDO $pdo, iterable $features, array $config): array
 {
     $propertyRows = [];
     $childRows = [];
     $skipped = 0;
+
+    $inserted = 0;
+    $properties = 0;
+
+    $flush = function() use (&$propertyRows, &$childRows, $pdo, &$inserted, &$properties) {
+        if (empty($propertyRows)) return;
+        $idMap = upsertProperties($pdo, array_values($propertyRows));
+        $properties += count($idMap);
+
+        $insertRows = [];
+        foreach ($childRows as $row) {
+            $propId = $idMap[$row['parcel_id']] ?? null;
+            if ($propId === null) continue;
+            $row['property_id'] = $propId;
+            // Build strictly ordered array for insertion
+            $insertArr = [];
+            foreach (['property_id', 'source_id', 'managing_agency', 'lot_size_sqft', 'status', 'notes'] as $col) {
+                $insertArr[] = $row[$col] ?? null;
+            }
+            $insertRows[] = $row; // Actually, let's just leave it associative and let bulkUpsert extract by column name
+        }
+
+        $inserted += bulkUpsert(
+            $pdo, 'surplus_properties',
+            ['property_id', 'source_id', 'managing_agency', 'lot_size_sqft', 'status', 'notes'],
+            $insertRows,
+            ['managing_agency', 'lot_size_sqft', 'status', 'notes']
+        );
+        $propertyRows = [];
+        $childRows = [];
+    };
 
     foreach ($features as $feature) {
         $attrs = $feature['attributes'] ?? [];
@@ -565,7 +691,7 @@ function processSurplusProperties(PDO $pdo, array $features, array $config): arr
             'source_id'       => $sourceId,
             'managing_agency' => $attrs['LOCATION'] ?? null,
             'lot_size_sqft'   => $attrs['SQ_FT'] ?? null,
-            'status'          => $attrs['STRATEGY'] ?? 'Available',
+            'status'          => substr((string)($attrs['STRATEGY'] ?? 'Available'), 0, 255),
             'notes'           => $attrs['NOTES'] ?? null,
         ];
     }
@@ -676,19 +802,16 @@ foreach (DATASETS as $slug => $config) {
     }
 
     try {
-        $json = file_get_contents($filePath);
-        $data = json_decode($json, true);
-
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            throw new RuntimeException('JSON decode error: ' . json_last_error_msg());
-        }
-
-        $features = $data['features'] ?? [];
-        if (empty($features)) {
+        if (filesize($filePath) === 0) {
             $report['datasets'][] = ['name' => $slug, 'records' => 0, 'skipped' => 0, 'file' => basename($filePath)];
-            error_log("[OK] $slug: 0 features in " . basename($filePath));
+            error_log("[OK] $slug: Empty file " . basename($filePath));
             continue;
         }
+
+        $features = \JsonMachine\Items::fromFile($filePath, [
+            'pointer' => '/features',
+            'decoder' => new \JsonMachine\JsonDecoder\ExtJsonDecoder(true)
+        ]);
 
         // Call the dataset-specific processor
         $processorFn = $config['processor'];
@@ -705,6 +828,9 @@ foreach (DATASETS as $slug => $config) {
         ];
 
         error_log("[OK] $slug: {$result['inserted']} upserted, {$result['skipped']} skipped, {$result['properties']} properties");
+
+        unset($features);
+        gc_collect_cycles();
 
     } catch (Exception $e) {
         if ($pdo->inTransaction()) {

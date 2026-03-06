@@ -49,21 +49,25 @@ const ENDPOINTS = [
         'slug' => 'code_violations',
         'url'  => 'https://gis.montgomeryal.gov/server/rest/services/HostedDatasets/Code_Violations/FeatureServer/0',
         'geometryType' => 'Point',
+        'dateFilterField' => 'last_edited_date',
     ],
     [
         'slug' => 'construction_permits',
         'url'  => 'https://gis.montgomeryal.gov/server/rest/services/HostedDatasets/Construction_Permits/FeatureServer/0',
         'geometryType' => 'Point',
+        'dateFilterField' => 'last_edited_date',
     ],
     [
         'slug' => 'vacant_properties',
         'url'  => 'https://services7.arcgis.com/xNUwUjOJqYE54USz/arcgis/rest/services/Suspected_Rentals/FeatureServer/3',
         'geometryType' => 'Polygon',
+        'dateFilterField' => null,
     ],
     [
         'slug' => 'surplus_properties',
         'url'  => 'https://services7.arcgis.com/xNUwUjOJqYE54USz/arcgis/rest/services/SURPLUS_CITY_PROPERTIES_polygon/FeatureServer/0',
         'geometryType' => 'Polygon',
+        'dateFilterField' => null,
     ],
 ];
 
@@ -175,12 +179,13 @@ function calculateCentroid(array $rings): array
  *
  * Uses $isFirstPage flag to handle JSON comma separation without trailing commas.
  *
- * @param  string $baseUrl      FeatureServer layer URL
- * @param  string $geometryType 'Point' or 'Polygon'
- * @param  string $filepath     Destination file path
- * @return int                  Total number of records written
+ * @param  string $baseUrl         FeatureServer layer URL
+ * @param  string $geometryType    'Point' or 'Polygon'
+ * @param  string $filepath        Destination file path
+ * @param  string|null $dateField  Date field for incremental fetching
+ * @return int                     Total number of records written
  */
-function streamAllRecords(string $baseUrl, string $geometryType, string $filepath): int
+function streamAllRecords(string $baseUrl, string $geometryType, string $filepath, ?string $dateField = null): int
 {
     $offset = 0;
     $queryUrl = $baseUrl . '/query';
@@ -197,8 +202,15 @@ function streamAllRecords(string $baseUrl, string $geometryType, string $filepat
     try {
         while ($offset < MAX_RECORDS) {
             // Build query parameters per ArcGIS REST API docs
+            $whereClause = '1=1';
+            if ($dateField !== null) {
+                // Fetch last 7 days of data explicitly. Timestamp format matching ArcGIS requirements.
+                $sevenDaysAgo = date('Y-m-d 00:00:00', strtotime('-7 days'));
+                $whereClause = "{$dateField} >= TIMESTAMP '{$sevenDaysAgo}'";
+            }
+
             $params = [
-                'where'             => '1=1',
+                'where'             => $whereClause,
                 'outFields'         => '*',
                 'outSR'             => '4326',
                 'returnGeometry'    => 'true',
@@ -301,11 +313,12 @@ foreach (ENDPOINTS as $endpoint) {
     $slug = $endpoint['slug'];
     $url  = $endpoint['url'];
     $geom = $endpoint['geometryType'];
+    $dateField = $endpoint['dateFilterField'] ?? null;
 
     try {
         $filename = $slug . '_' . date('Y-m-d') . '.json';
         $filepath = $rawDir . DIRECTORY_SEPARATOR . $filename;
-        $count = streamAllRecords($url, $geom, $filepath);
+        $count = streamAllRecords($url, $geom, $filepath, $dateField);
 
         $report['datasets'][] = [
             'name'     => $slug,

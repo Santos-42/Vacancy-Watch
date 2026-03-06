@@ -21,6 +21,8 @@
 
 declare(strict_types=1);
 
+ini_set('memory_limit', '512M');
+
 // ---------------------------------------------------------------------------
 // Configuration
 // ---------------------------------------------------------------------------
@@ -338,6 +340,8 @@ try {
     $allAnomalies = array_merge($allAnomalies, $zombies);
     $summary['zombie_properties'] = count($zombies);
     error_log("[OK] Zombie Properties: " . count($zombies) . " found");
+    unset($zombies);
+    gc_collect_cycles();
 } catch (Exception $e) {
     $errors[] = ['scenario' => 'zombie_properties', 'message' => $e->getMessage()];
     error_log("[ERROR] Zombie Properties: " . $e->getMessage());
@@ -349,6 +353,8 @@ try {
     $allAnomalies = array_merge($allAnomalies, $ghosts);
     $summary['ghost_permits'] = count($ghosts);
     error_log("[OK] Ghost Permits: " . count($ghosts) . " found");
+    unset($ghosts);
+    gc_collect_cycles();
 } catch (Exception $e) {
     $errors[] = ['scenario' => 'ghost_permits', 'message' => $e->getMessage()];
     error_log("[ERROR] Ghost Permits: " . $e->getMessage());
@@ -360,6 +366,8 @@ try {
     $allAnomalies = array_merge($allAnomalies, $blindSpots);
     $summary['government_blind_spots'] = count($blindSpots);
     error_log("[OK] Government Blind Spots: " . count($blindSpots) . " found");
+    unset($blindSpots);
+    gc_collect_cycles();
 } catch (Exception $e) {
     $errors[] = ['scenario' => 'government_blind_spots', 'message' => $e->getMessage()];
     error_log("[ERROR] Government Blind Spots: " . $e->getMessage());

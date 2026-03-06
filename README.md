@@ -1,79 +1,85 @@
 # Vacancy Watch
 
-**Montgomery Property Anomaly Map**
+**Autonomous Data Intelligence Engine for Municipal Oversight**
 
-Vacancy Watch is a localized, full-stack Minimum Viable Product (MVP) aimed at helping municipal operators in Montgomery, Alabama identify problematic properties. By correlating disparate civic datasets (e.g. vacant registry, code violations, active building permits) using geospatial intelligence, the system automatically detects, categorizes, and flags "anomalous" properties on an interactive dashboard.
+Vacancy Watch is not just a map with red dots. It is an autonomous data intelligence engine that silently monitors municipal negligence, analyzes bureaucratic failures, and presents them as actionable targets for investigation.
 
-## Vision & Primary Goal
+Built on a highly optimized, free-tier cloud infrastructure, the system automatically pulls data from the **City of Montgomery Open Data Portal**, processes it through a strict correlation engine, and delivers a data-light, map-based interface using the **ArcGIS Maps SDK for JavaScript**.
 
-The primary objective is to move away from static spreadsheets and manual data cross-referencing. Vacancy Watch automatically ingests data from the **City of Montgomery Open Data Portal** and processes them through an internal Correlation Engine. The frontend delivers an actionable, data-light, map-based interface built with the **ArcGIS Maps SDK for JavaScript**.
+---
 
-## Anomalies Detected
+## 🎯 The Anomalies (Intersections of Negligence)
 
-The platform tracks three critical types of property anomalies:
+The system does not simply dump thousands of vacant records onto a screen. It filters the noise and prioritizes the most critical intersections of negligence, scoring them from 1 to 10:
 
-1. **🧟 Zombie Properties:** Registered vacant properties that continue to generate active, severe code violations. Indicates neglect and potential civic hazard.
-2. **👻 Ghost Permits:** Properties officially marked as vacant, but possessing recently issued, active construction or electrical permits. Indicates unauthorized flipping or tax evasion.
-3. **📍 Government Blind Spots:** Properties that are _not_ on the official vacancy registry, but exhibit the footprint of prolonged abandonment (no water service, overgrown vegetation citations).
+1. **👻 Ghost Permits:** Construction or electrical permits actively issued on properties that are flagged for legal violations.
+2. **🧟 Zombie Properties:** Registered vacant homes left to decay, accumulating severe code violations with no real action taken.
+3. **📍 Government Blind Spots:** City-owned assets that violate the city's own municipal codes.
 
-## System Architecture (AWS 3-Tier Simulation)
+By mathematically filtering out thousands of irrelevant data points, the system presents a heavily curated list of maximum 50 highly critical intelligence targets.
 
-Vacancy Watch is built simulating an enterprise 3-tier AWS architecture (S3 for frontend, EC2/API Gateway for backend, RDS for DB) running locally:
+---
 
-### 1. Presentation Tier (Frontend)
+## 🏗️ Architectural Pillars
 
-- **Tech Stack:** HTML5, CSS3, Vanilla JavaScript, ArcGIS Maps SDK (v5.0)
-- **Concept:** Acts purely as a dumb client. It loads the map, fetches lightweight point data from the API, and renders custom `picture-marker` SVG pins.
-- **Features:** Synchronized executive table, mobile responsive tabs, dynamic UI filtering, and lazy-loading of heavy detail records only when specific pins are interacted with.
+The architecture is designed to be resilient, efficient, and fully autonomous, bypassing the limitations of free-tier cloud resources.
 
-### 2. Logic Tier (Backend/API)
+### 1. The Harvester (Extraction Pillar)
 
-- **Tech Stack:** Pure PHP
-- **Concept:** Strict separation of concerns. The backend _never_ renders HTML; it is only responsible for exposing JSON payloads (`api/get_anomalies.php`) and running ETL scripts.
-- **Cache Layer:** To protect the database from public traffic, the API serves a static, pre-computed `anomalies_cache.json` file. Direct DB connections on public endpoints are strictly forbidden.
+Rather than overloading fragile server memory, the ETL pipeline utilizes **Data Streaming** and `UPSERT` operations into the **Aiven MySQL** database. It aggressively pulls thousands of rows (Vacant Properties, Building Permits, Code Violations, City Assets) but only updates what has changed, ensuring maximum database efficiency and zero memory overload.
 
-### 3. Data Tier (Database)
+### 2. The Brain (Analytics Pillar)
 
-- **Tech Stack:** MySQL
-- **Concept:** Handles all heavy filtering and spatial processing. Features generated spatial columns (`geom_location POINT GENERATED ALWAYS AS ... STORED`) to ensure geospatial integrity at the hardware level.
+This is the core correlation engine (`generate_anomalies.php`). It calculates the Priority Score, throws away noise, and focuses purely on actionable intelligence.
 
-## Setup & Installation
+### 3. The Cache & Auto-Heal (Defense Pillar)
+
+The frontend visitors **never** interact directly with the database. The API serves a single, static JSON file (`anomalies_cache.json`).
+
+- **Resilience:** If the application goes viral, the traffic is absorbed entirely by **Vercel's** CDN edge network.
+- **Auto-Healing:** If the backend (**Render**) wipes the temporary file due to a reboot ("Docker Amnesia"), an auto-heal mechanism forces a silent, fraction-of-a-second recalculation to generate a new cache and heal the system.
+
+### 4. The Ghost Operator (Autonomy Pillar)
+
+Fully automated without human intervention or paid server instances. A secure backdoor (`trigger.php` with a secret key) is delegated to a third-party service (**cron-job.org**). It wakes up weekly, harvests the previous days' bureaucratic data, updates the cache, and goes back to sleep.
+
+---
+
+## 🚀 Infrastructure & Deployment
+
+- **Frontend:** [Vercel](https://vercel.com) (Static HTML/JS hosting, Edge network caching)
+- **Backend API & ETL:** [Render](https://render.com) (PHP Web Service)
+- **Database:** [Aiven](https://aiven.io) (Managed MySQL)
+- **Automation Trigger:** [cron-job.org](https://cron-job.org)
+
+---
+
+## 💻 Setup & Installation (Local Development)
 
 **Prerequisites:** PHP 8+, MySQL 8+, and a local web server (XAMPP/MAMP).
 
 1. **Clone & Configure:**
-   - Clone the repository into your local server's web root (e.g., `htdocs/vacancy-watch`).
-   - Copy `.env.example` to `.env` and fill in your local MySQL credentials.
+   - Clone the repository into your local server's web root.
+   - Copy `.env.example` to `.env` and configure your local MySQL credentials.
    - Insert your `ARCGIS_API_KEY` into the `.env` file.
 
 2. **Database Initialization:**
-   - Run the provided `schema.sql` (if available) to build the `properties` and `code_violations` table structures.
+   - Run the provided `schema.sql` (if available) to build the required tables.
 
 3. **Data Sync & Anomaly Generation:**
-   - Open a terminal and navigate to the project root.
-   - Run the data fetcher from Montgomery Open Data:
+   - Run the data fetcher to harvest Montgomery Open Data:
      ```bash
      php backend/scripts/fetch_montgomery.php
      ```
-   - Run the correlation engine to crunch the data, generate scores, and publish the JSON cache:
+   - Run the correlation engine to crunch data and publish the JSON cache:
      ```bash
      php backend/scripts/generate_anomalies.php
      ```
 
 4. **Launch Application:**
-   - Start your local web server.
-   - Access the API at `http://localhost/vacancy-watch/backend/api/get_anomalies.php` to verify the cache is readable.
-   - Access the Frontend at `http://localhost/vacancy-watch/frontend/index.html` (Use a designated local port like `5500` if simulating S3 CORS rules).
-
-## Performance & Hardening
-
-The project features several enterprise-grade optimizations:
-
-- **Streaming ETL Disk Writes:** Overcomes PHP integer RAM limits by streaming incoming JSON pages directly into flat storage files instead of holding giant arrays in memory.
-- **Atomic Cache Writes:** Prevents API reading collisions via temp-file buildup and native `rename()` transactions.
-- **Dynamic Time Anchoring:** Prevents "Null Traps" on empty databases or delayed external syncs by anchoring all time-based anomaly algorithms to `MAX(date_filed)` instead of `CURDATE()`.
-- **Zero I/O API Environment:** Reduces server overhead by prioritizing memory-based `getenv()` calls for variables like CORS over parsing localized `.env` files.
+   - Access the API at `https://vacancy-watch.onrender.com/backend/api/get_anomalies.php` to verify the cache output.
+   - Access the Frontend dashboard at `https://vacancy-watch.vercel.app`.
 
 ---
 
-_Built following the strict architectural guidelines defined in `agent.md`._
+_Developed as an autonomous data intelligence tool designed to produce lethal, actionable insights._

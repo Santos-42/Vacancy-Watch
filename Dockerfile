@@ -1,21 +1,29 @@
+# Gunakan image PHP resmi dengan Apache
 FROM php:8.2-apache
 
-# Instal ekstensi pdo_mysql untuk koneksi Aiven
-RUN docker-php-ext-install pdo_mysql
+# RETASAN 1: Gunakan mlocati untuk mengunduh ekstensi yang sudah jadi, 
+# bukan mengkompilasi dari awal. Ini menghemat 90% RAM dan Waktu Build.
+COPY --from=mlocati/php-extension-installer /usr/bin/install-php-extensions /usr/local/bin/
+RUN install-php-extensions pdo_mysql
 
-# Instal Composer
+# Salin Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
+# Set working directory
 WORKDIR /var/www/html
+
+# Salin semua file proyek
 COPY . .
 
-# Jalankan instalasi dependency
+# RETASAN 2: Lepas batas memori Composer agar tidak mati mendadak
+ENV COMPOSER_MEMORY_LIMIT=-1
 RUN composer install --no-dev --optimize-autoloader
 
-# Set izin folder untuk cache data
+# Siapkan folder cache dengan izin penuh
 RUN mkdir -p backend/data/raw && chmod -R 777 backend/data
 
-# Gunakan port 80
+# Buka port 80
 EXPOSE 80
 
+# Jalankan server
 CMD ["apache2-foreground"]

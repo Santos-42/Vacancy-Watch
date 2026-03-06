@@ -775,7 +775,8 @@ $env = loadEnv($envPath);
 // Connect to database
 try {
     $pdo = createPDO($env);
-    error_log("[OK] Connected to MySQL at {$env['DB_HOST']}:{$env['DB_PORT']}");
+    $actualHost = getenv('DB_HOST') ?: ($env['DB_HOST'] ?? 'localhost');
+    error_log("[OK] Connected to MySQL at " . $actualHost);
 } catch (PDOException $e) {
     fwrite(STDERR, "[FATAL] Database connection failed: " . $e->getMessage() . "\n");
     exit(1);

@@ -63,13 +63,16 @@ function loadEnv(string $path): array
 
 function createPDO(array $env): PDO
 {
-    $dsn = sprintf(
-        'mysql:host=%s;port=%s;dbname=%s;charset=utf8mb4',
-        $env['DB_HOST'] ?? 'localhost',
-        $env['DB_PORT'] ?? '3306',
-        $env['DB_NAME'] ?? 'vacancy_watch'
-    );
-    return new PDO($dsn, $env['DB_USER'] ?? 'root', $env['DB_PASS'] ?? '', [
+    // Prioritaskan getenv() dari server Render. Jika kosong, baru baca array lokal.
+    $host = getenv('DB_HOST') ?: ($env['DB_HOST'] ?? 'localhost');
+    $port = getenv('DB_PORT') ?: ($env['DB_PORT'] ?? '3306');
+    $db   = getenv('DB_NAME') ?: ($env['DB_NAME'] ?? 'vacancy_watch');
+    $user = getenv('DB_USER') ?: ($env['DB_USER'] ?? 'root');
+    $pass = getenv('DB_PASS') ?: ($env['DB_PASS'] ?? '');
+
+    $dsn = sprintf('mysql:host=%s;port=%s;dbname=%s;charset=utf8mb4', $host, $port, $db);
+
+    return new PDO($dsn, $user, $pass, [
         PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
         PDO::ATTR_EMULATE_PREPARES   => false,

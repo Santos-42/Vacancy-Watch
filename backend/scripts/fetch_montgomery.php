@@ -44,28 +44,29 @@ const CURL_CONNECT_TIMEOUT = 10;
  *   geometryType: 'Point' or 'Polygon'
  *   Polygon endpoints get &returnCentroid=true appended automatically.
  */
-const ENDPOINTS = [
+// Gunakan variabel, bukan CONST, agar bisa membaca Environment Variables
+$endpoints = [
     [
         'slug' => 'code_violations',
-        'url'  => 'https://gis.montgomeryal.gov/server/rest/services/HostedDatasets/Code_Violations/FeatureServer/0',
+        'url'  => getenv('API_URL_CODE_VIOLATIONS'),
         'geometryType' => 'Point',
         'dateFilterField' => 'last_edited_date',
     ],
     [
         'slug' => 'construction_permits',
-        'url'  => 'https://gis.montgomeryal.gov/server/rest/services/HostedDatasets/Construction_Permits/FeatureServer/0',
+        'url'  => getenv('API_URL_PERMITS'),
         'geometryType' => 'Point',
         'dateFilterField' => 'last_edited_date',
     ],
     [
         'slug' => 'vacant_properties',
-        'url'  => 'https://services7.arcgis.com/xNUwUjOJqYE54USz/arcgis/rest/services/Suspected_Rentals/FeatureServer/3',
+        'url'  => getenv('API_URL_VACANT'),
         'geometryType' => 'Polygon',
         'dateFilterField' => null,
     ],
     [
         'slug' => 'surplus_properties',
-        'url'  => 'https://services7.arcgis.com/xNUwUjOJqYE54USz/arcgis/rest/services/SURPLUS_CITY_PROPERTIES_polygon/FeatureServer/0',
+        'url'  => getenv('API_URL_SURPLUS'),
         'geometryType' => 'Polygon',
         'dateFilterField' => null,
     ],
@@ -309,7 +310,7 @@ $report = [
     'purged_files'  => 0,
 ];
 
-foreach (ENDPOINTS as $endpoint) {
+foreach ($endpoints as $endpoint) {
     $slug = $endpoint['slug'];
     $url  = $endpoint['url'];
     $geom = $endpoint['geometryType'];

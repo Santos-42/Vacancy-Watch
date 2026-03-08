@@ -1,5 +1,4 @@
 <?php
-// Mencegah akses publik (menggunakan kunci rahasia yang sama dengan trigger)
 $secret = getenv('CRON_SECRET');
 if (!$secret || !isset($_GET['key']) || $_GET['key'] !== $secret) {
     http_response_code(403);
@@ -16,10 +15,9 @@ try {
     $dsn = "mysql:host=$host;port=$port;dbname=$db;charset=utf8mb4";
     $pdo = new PDO($dsn, $user, $pass, [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-        PDO::ATTR_TIMEOUT => 5 // Maksimal tunggu 5 detik
+        PDO::ATTR_TIMEOUT => 5
     ]);
     
-    // Kueri paling ringan di SQL untuk membuktikan database hidup
     $pdo->query("SELECT 1"); 
     
     echo "PONG: Aiven Database is awake and breathing.";

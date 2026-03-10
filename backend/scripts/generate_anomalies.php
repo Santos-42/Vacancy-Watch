@@ -93,8 +93,8 @@ function findZombieProperties(PDO $pdo): array
             p.street_address,
             p.latitude,
             p.longitude,
-            vr.status           AS vacancy_status,
-            COUNT(cv.id)        AS violation_count,
+            MAX(vr.status)      AS vacancy_status,
+            COUNT(DISTINCT cv.id) AS violation_count,
             MAX(cv.date_filed)  AS latest_violation_date,
             (
                 SELECT cv2.code_reference
@@ -113,8 +113,7 @@ function findZombieProperties(PDO $pdo): array
                 INTERVAL :window DAY
             )
         GROUP BY
-            p.id, p.parcel_id, p.street_address, p.latitude, p.longitude,
-            vr.status
+            p.id, p.parcel_id, p.street_address, p.latitude, p.longitude
         ORDER BY
             violation_count DESC
         LIMIT :lim
@@ -165,7 +164,7 @@ function findGhostPermits(PDO $pdo): array
             cp.permit_type,
             cp.issue_date,
             cp.status               AS permit_status,
-            CASE WHEN vr.id IS NOT NULL THEN 1 ELSE 0 END AS is_vacant,
+            MAX(CASE WHEN vr.id IS NOT NULL THEN 1 ELSE 0 END) AS is_vacant,
             (
                 SELECT COUNT(*)
                 FROM code_violations cv
@@ -195,8 +194,7 @@ function findGhostPermits(PDO $pdo): array
             )
         GROUP BY
             p.id, p.parcel_id, p.street_address, p.latitude, p.longitude,
-            cp.permit_number, cp.permit_type, cp.issue_date, cp.status,
-            vr.id
+            cp.permit_number, cp.permit_type, cp.issue_date, cp.status
         ORDER BY
             cp.issue_date ASC
         LIMIT :lim
@@ -253,9 +251,9 @@ function findGovernmentBlindSpots(PDO $pdo): array
             p.street_address,
             p.latitude,
             p.longitude,
-            sp.lot_size_sqft,
-            sp.status               AS surplus_status,
-            COUNT(cv.id)            AS violation_count,
+            MAX(sp.lot_size_sqft)   AS lot_size_sqft,
+            MAX(sp.status)          AS surplus_status,
+            COUNT(DISTINCT cv.id)   AS violation_count,
             MAX(cv.date_filed)      AS latest_violation_date
         FROM surplus_properties sp
         INNER JOIN properties p
@@ -264,11 +262,10 @@ function findGovernmentBlindSpots(PDO $pdo): array
         INNER JOIN code_violations cv
             ON cv.property_id = p.id
         GROUP BY
-            p.id, p.parcel_id, p.street_address, p.latitude, p.longitude,
-            sp.lot_size_sqft, sp.status
+            p.id, p.parcel_id, p.street_address, p.latitude, p.longitude
         ORDER BY
             violation_count DESC,
-            sp.lot_size_sqft DESC
+            MAX(sp.lot_size_sqft) DESC
         LIMIT :lim
     ";
 

@@ -377,7 +377,8 @@ function renderExecTable(anomalies) {
       const typeLabel = ANOMALY_LABELS[a.anomaly_type] || a.anomaly_type;
       const badgeClass = `table-badge table-badge-${a.anomaly_type}`;
 
-      return `<tr data-parcel-id="${a.parcel_id}"
+      return `<tr data-index="${i}"
+                  data-parcel-id="${a.parcel_id}"
                   data-lat="${a.latitude}"
                   data-lng="${a.longitude}">
         <td>${i + 1}</td>
@@ -395,14 +396,15 @@ function renderExecTable(anomalies) {
     const parcelId = row.dataset.parcelId;
     const lat = parseFloat(row.dataset.lat);
     const lng = parseFloat(row.dataset.lng);
-    execRowClick(parcelId, lat, lng);
+    const index = parseInt(row.dataset.index); // AMBIL INDEX
+    execRowClick(parcelId, lat, lng, index);   // KIRIM INDEX
   });
 }
 
 /**
  * Handle executive table row click: fly map to coordinates + load detail.
  */
-function execRowClick(parcelId, lat, lng) {
+function execRowClick(parcelId, lat, lng, index) { // TAMBAHKAN INDEX DI SINI
   if (!parcelId || !mapViewRef) return;
 
   // 1. Fly the map to the property
@@ -412,27 +414,36 @@ function execRowClick(parcelId, lat, lng) {
   );
 
   // 2. Highlight the row
-  highlightTableRow(parcelId);
+  highlightTableRow(index, true); // true = ini adalah Index
 
-  // 3. Populate the detail panel (reuses existing lazy-fetch pattern)
-  handlePinClick(parcelId);
+  // 3. Populate the detail panel
+  handlePinClick(parcelId, index); // KIRIM INDEX KE PANEL
 }
 
 /**
- * Highlight a table row by parcel_id and scroll it into view.
- * Called from both row click and map pin click (bidirectional sync).
+ * Highlight a table row by EXACT index (if clicked from table)
+ * OR by parcelId (if clicked from map pin).
  */
-function highlightTableRow(parcelId) {
+function highlightTableRow(identifier, isIndex = true) {
   const tbody = document.getElementById("anomaly-tbody");
   if (!tbody) return;
 
   // Remove active class from all rows
   tbody.querySelectorAll("tr.row-active").forEach((r) => r.classList.remove("row-active"));
 
-  if (!parcelId) return;
+  if (identifier === null || identifier === undefined) return;
 
-  // Find matching row(s) — parcel_id may appear more than once
-  const target = tbody.querySelector(`tr[data-parcel-id="${parcelId}"]`);
+  let target = null;
+  
+  if (isIndex) {
+    // Dipanggil dari klik tabel (mencari berdasarkan index pasti)
+    target = tbody.querySelector(`tr[data-index="${identifier}"]`);
+  } else {
+    // Dipanggil dari klik Map Pin (mencari berdasarkan parcel_id)
+    // Catatan: Ini akan menyorot baris PERTAMA yang cocok jika ada ganda.
+    target = tbody.querySelector(`tr[data-parcel-id="${identifier}"]`);
+  }
+
   if (target) {
     target.classList.add("row-active");
     target.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -443,7 +454,7 @@ function highlightTableRow(parcelId) {
 // Click Handler: Pin click → fetch full data → populate panel
 // ---------------------------------------------------------------------------
 
-async function handlePinClick(parcelId) {
+async function handlePinClick(parcelId, targetIndex = null) { // TAMBAHKAN TARGET INDEX
   if (!parcelId) return;
 
   // Mobile UX: Auto-switch to detail tab when a pin is clicked
@@ -457,10 +468,25 @@ async function handlePinClick(parcelId) {
   try {
     const fullData = await getFullAnomalyData();
 
-    // Find the matching anomaly by parcel_id in the full dataset
-    const anomaly = fullData.anomalies.find(
-      (a) => a.parcel_id === parcelId
-    );
+    let anomaly = null;
+    
+    if (targetIndex !== null) {
+      // Jika diklik dari tabel, kita ambil LANGSUNG dari array yang sudah diurutkan.
+      // Catatan Penting: array fullData.anomalies HARUS diurutkan dengan cara yang 
+      // SAMA PERSIS dengan array tabel di renderExecTable agar indexnya cocok.
+      const sorted = [...fullData.anomalies]
+        .filter((a) => a.latitude != null && a.longitude != null)
+        .sort((a, b) => {
+          const scoreDiff = (b.priority_score ?? 0) - (a.priority_score ?? 0);
+          if (scoreDiff !== 0) return scoreDiff;
+          return (a.street_address || "").localeCompare(b.street_address || "");
+        });
+        
+      anomaly = sorted[targetIndex];
+    } else {
+      // Jika diklik dari Map Pin (tidak ada index tabel), ambil yang pertama saja.
+      anomaly = fullData.anomalies.find((a) => a.parcel_id === parcelId);
+    }
 
     if (!anomaly) {
       if (panel) {
@@ -611,8 +637,8 @@ async function main() {
 
     if (graphicHit) {
       const parcelId = graphicHit.graphic.getAttribute("parcel_id");
-      handlePinClick(parcelId);
-      highlightTableRow(parcelId);   // ← Module 3.4: sync table row
+      handlePinClick(parcelId); // Ini tetap pakai parcelId karena kita tidak tahu indexnya dari peta
+      highlightTableRow(parcelId, false); // false = ini adalah parcelId, bukan index
     } else {
       resetPanel();
       highlightTableRow(null);       // ← clear table highlight
